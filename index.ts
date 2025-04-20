@@ -6,8 +6,13 @@ import {
   Routes,
   ApplicationCommandOptionType,
   Collection,
+  User,
+  TextChannel,
 } from "discord.js";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { scheduleJob } from "node-schedule";
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +25,91 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
+
+// Interface for book borrowing records
+interface BookBorrowing {
+  userId: string;
+  username: string;
+  bookTitle: string;
+  borrowDate: string;
+  dueDate: string;
+  channelId: string;
+  guildId: string;
+  imageUrl: string; // Store the image URL
+}
+
+// File to store borrowing records
+const BORROWINGS_FILE = path.join(__dirname, "borrowings.json");
+
+// Function to load borrowings from file
+function loadBorrowings(): BookBorrowing[] {
+  if (!fs.existsSync(BORROWINGS_FILE)) {
+    return [];
+  }
+
+  try {
+    const data = fs.readFileSync(BORROWINGS_FILE, "utf8");
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Error loading borrowings:", error);
+    return [];
+  }
+}
+
+// Function to save borrowings to file
+function saveBorrowings(borrowings: BookBorrowing[]): void {
+  try {
+    fs.writeFileSync(BORROWINGS_FILE, JSON.stringify(borrowings, null, 2));
+  } catch (error) {
+    console.error("Error saving borrowings:", error);
+  }
+}
+
+// Function to add a new borrowing
+function addBorrowing(borrowing: BookBorrowing): void {
+  const borrowings = loadBorrowings();
+  borrowings.push(borrowing);
+  saveBorrowings(borrowings);
+}
+
+// Function to check for due books and send notifications
+async function checkDueBooks(): Promise<void> {
+  const borrowings = loadBorrowings();
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const updatedBorrowings: BookBorrowing[] = [];
+  console.log("Starting check for due books");
+
+  for (const borrowing of borrowings) {
+    if (borrowing.dueDate === today) {
+      try {
+        // Get the channel
+        const channel = (await client.channels.fetch(
+          borrowing.channelId
+        )) as TextChannel;
+        if (channel) {
+          // Send notification with image
+          await channel.send({
+            content: `<@${borrowing.userId}>, your book "${borrowing.bookTitle}" is due today!`,
+            files: borrowing.imageUrl ? [borrowing.imageUrl] : [],
+          });
+          console.log(
+            `Sent due notification to ${borrowing.username} for book "${borrowing.bookTitle}"`
+          );
+        }
+      } catch (error) {
+        console.error("Error sending due notification:", error);
+        // If we couldn't send the notification, keep the borrowing in the list
+        updatedBorrowings.push(borrowing);
+      }
+    } else if (new Date(borrowing.dueDate) > new Date(today)) {
+      // Keep future dues
+      updatedBorrowings.push(borrowing);
+    }
+  }
+
+  // Save updated list (without past dues that were notified)
+  saveBorrowings(updatedBorrowings);
+}
 
 // Popular books for autocomplete suggestions
 const popularBooks = [
@@ -35,7 +125,7 @@ const popularBooks = [
   "The Alchemist",
 ];
 
-// When the client is ready, register slash commands
+// When the client is ready, register slash commands and set up scheduled checks
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 
@@ -81,6 +171,15 @@ client.once(Events.ClientReady, async (readyClient) => {
         },
       ],
     });
+
+    // Set up daily check for due books (runs at 8am instead of midnight)
+    scheduleJob("0 8 * * *", () => {
+      console.log("Running scheduled check for due books");
+      checkDueBooks();
+    });
+
+    // Also check on startup
+    await checkDueBooks();
 
     console.log("Successfully reloaded application (/) commands.");
   } catch (error) {
@@ -133,13 +232,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const numberOfDays = interaction.options.getInteger("days");
       const attachment = interaction.options.getAttachment("image");
 
+      if (!bookTitle || !numberOfDays) {
+        await interaction.editReply(
+          "Please provide both a book title and number of days!"
+        );
+        return;
+      }
+
       if (!attachment) {
         await interaction.editReply("Please provide a book image!");
         return;
       }
 
+      // Calculate due date
+      const borrowDate = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + numberOfDays);
+
+      // Format dates as YYYY-MM-DD
+      const borrowDateStr = borrowDate.toISOString().split("T")[0];
+      const dueDateStr = dueDate.toISOString().split("T")[0];
+
+      // Record the borrowing
+      addBorrowing({
+        userId: interaction.user.id,
+        username: interaction.user.username,
+        bookTitle,
+        borrowDate: borrowDateStr,
+        dueDate: dueDateStr,
+        channelId: interaction.channelId,
+        guildId: interaction.guildId || "",
+        imageUrl: attachment.url,
+      });
+
       await interaction.editReply({
-        content: `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified in ${numberOfDays} days when it is due to be returned.`,
+        content: `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified on ${dueDateStr} when it is due to be returned.`,
         files: [attachment],
       });
     } catch (error) {
@@ -168,12 +295,41 @@ client.on(Events.MessageCreate, async (message) => {
       const bookTitle = match[1];
       const numberOfDays = parseInt(match[2]);
 
-      await message.reply(
-        `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified in ${numberOfDays} days when it is due to be returned.`
-      );
+      // Check for image attachment
+      const attachment = message.attachments.first();
+      if (!attachment) {
+        await message.reply("Please attach an image of the book!");
+        return;
+      }
+
+      // Calculate due date
+      const borrowDate = new Date();
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + numberOfDays);
+
+      // Format dates as YYYY-MM-DD
+      const borrowDateStr = borrowDate.toISOString().split("T")[0];
+      const dueDateStr = dueDate.toISOString().split("T")[0];
+
+      // Record the borrowing
+      addBorrowing({
+        userId: message.author.id,
+        username: message.author.username,
+        bookTitle,
+        borrowDate: borrowDateStr,
+        dueDate: dueDateStr,
+        channelId: message.channelId,
+        guildId: message.guildId || "",
+        imageUrl: attachment.url,
+      });
+
+      await message.reply({
+        content: `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified on ${dueDateStr} when it is due to be returned.`,
+        files: [attachment],
+      });
     } else {
       await message.reply(
-        'Please use the correct format: !book "name of the book" numberOfDays or try the /book slash command with autocomplete!'
+        'Please use the correct format: !book "name of the book" numberOfDays and attach an image of the book, or try the /book slash command with autocomplete!'
       );
     }
   }
