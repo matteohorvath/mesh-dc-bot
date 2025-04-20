@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package.json and lockfile
 COPY package.json bun.lockb ./
-COPY .env ./
+COPY ./.env ./
 # Install dependencies
 RUN bun install
 
