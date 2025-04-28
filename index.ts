@@ -9,7 +9,13 @@ import {
   User,
   TextChannel,
   GuildMember,
+  ChatInputCommandInteraction,
+  ButtonInteraction,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from "discord.js";
+import type { Interaction, CacheType } from "discord.js";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -194,169 +200,225 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 });
 
-// Handle autocomplete requests
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isAutocomplete()) return;
+// Refactored function to handle the door opening logic
+async function handleOpenDoorInteraction(
+  interaction: ChatInputCommandInteraction | ButtonInteraction
+) {
+  try {
+    // Use deferReply for buttons as well, ensure it's not ephemeral like the command
+    await interaction.deferReply({ ephemeral: false });
 
-  // Check if the interaction is in the library channel
-  if (
-    !interaction.channel ||
-    !("name" in interaction.channel) ||
-    interaction.channel.name !== "library"
-  )
-    return;
-
-  if (interaction.commandName === "book") {
-    const focusedValue = interaction.options.getFocused().toLowerCase();
-    const filtered = popularBooks.filter((book) =>
-      book.toLowerCase().includes(focusedValue)
-    );
-
-    // Return up to 25 matching results
-    await interaction.respond(
-      filtered.slice(0, 25).map((book) => ({ name: book, value: book }))
-    );
-  }
-});
-
-// Handle slash command interactions
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  if (interaction.commandName === "ping") {
-    try {
-      await interaction.deferReply();
-      await interaction.editReply("Pong!");
-    } catch (error) {
-      console.error("Error responding to ping command:", error);
+    // Ensure the command is used in a guild and the channel is correct
+    if (
+      !interaction.inGuild() ||
+      !interaction.channel ||
+      !("name" in interaction.channel) ||
+      interaction.channel.name !== "door"
+    ) {
+      await interaction.editReply(
+        "This action can only be performed in the #door channel."
+      );
+      return;
     }
-  }
 
-  if (interaction.commandName === "book") {
-    try {
-      await interaction.deferReply();
-      const bookTitle = interaction.options.getString("title");
-      const numberOfDays = interaction.options.getInteger("days");
-      const attachment = interaction.options.getAttachment("image");
+    // Check user roles (interaction.member should be a GuildMember here)
+    const member = interaction.member as GuildMember;
+    if (!member) {
+      await interaction.editReply("Could not determine your roles.");
+      return;
+    }
+    const hasRequiredRole = member.roles.cache.some(
+      (role) => role.name === "BL001" || role.name === "Member"
+    );
 
-      if (!bookTitle || !numberOfDays) {
-        await interaction.editReply(
-          "Please provide both a book title and number of days!"
-        );
-        return;
-      }
+    if (!hasRequiredRole) {
+      await interaction.editReply(
+        "You do not have the required role to open the door."
+      );
+      return;
+    }
 
-      if (!attachment) {
-        await interaction.editReply("Please provide a book image!");
-        return;
-      }
+    // Roles are okay, attempt to open the door
+    console.log(
+      `Door opening initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
+    );
+    const response = await fetch("http://100.110.75.56:5458/door", {
+      method: "GET",
+    });
 
-      // Calculate due date
-      const borrowDate = new Date();
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + numberOfDays);
+    if (response.ok) {
+      console.log("Door opening request sent successfully.");
+      // Create the button
+      const openDoorButton = new ButtonBuilder()
+        .setCustomId("opendoor_button") // Keep the same ID to be caught by the interaction handler
+        .setLabel("Open Door") // Change label slightly for clarity
+        .setStyle(ButtonStyle.Primary);
 
-      // Format dates as YYYY-MM-DD
-      const borrowDateStr = borrowDate.toISOString().split("T")[0];
-      const dueDateStr = dueDate.toISOString().split("T")[0];
-
-      // Record the borrowing
-      addBorrowing({
-        userId: interaction.user.id,
-        username: interaction.user.username,
-        bookTitle,
-        borrowDate: borrowDateStr,
-        dueDate: dueDateStr,
-        channelId: interaction.channelId,
-        guildId: interaction.guildId || "",
-        imageUrl: attachment.url,
-      });
+      // Create an action row to hold the button
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        openDoorButton
+      );
 
       await interaction.editReply({
-        content: `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified on ${dueDateStr} when it is due to be returned.`,
-        files: [attachment],
+        content: "Door opening request sent successfully. ✅",
+        components: [row], // Add the button row here
       });
-    } catch (error) {
-      console.error("Error responding to book command:", error);
+    } else {
+      console.error(
+        `Door opening request failed with status: ${response.status}`
+      );
+      await interaction.editReply(
+        `Failed to send door opening request (status: ${response.status}). Please try again or contact an admin.`
+      );
+    }
+  } catch (error) {
+    console.error("Error handling opendoor interaction:", error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction
+        .followUp({
+          content: "An error occurred while processing the command.",
+          ephemeral: true,
+        })
+        .catch(console.error);
+    } else {
+      await interaction
+        .reply({
+          content: "An error occurred while processing the command.",
+          ephemeral: true,
+        })
+        .catch(console.error);
     }
   }
+}
 
-  // Handle the new /opendoor command
-  if (interaction.commandName === "opendoor") {
-    try {
-      await interaction.deferReply({ ephemeral: false }); // Ephemeral reply
+// Handle autocomplete requests
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isAutocomplete()) {
+    if (
+      !interaction.channel ||
+      !("name" in interaction.channel) ||
+      interaction.channel.name !== "library"
+    )
+      return;
 
-      // Ensure the command is used in a guild and the channel is correct
-      if (
-        !interaction.inGuild() ||
-        !interaction.channel ||
-        interaction.channel.name !== "door"
-      ) {
-        await interaction.editReply(
-          "This command can only be used in the #door channel."
-        );
-        return;
-      }
-
-      // Check user roles (interaction.member should be a GuildMember here)
-      const member = interaction.member as GuildMember;
-      const hasRequiredRole = member.roles.cache.some(
-        (role) => role.name === "BL001" || role.name === "Member"
+    if (interaction.commandName === "book") {
+      const focusedValue = interaction.options.getFocused().toLowerCase();
+      const filtered = popularBooks.filter((book) =>
+        book.toLowerCase().includes(focusedValue)
       );
 
-      if (!hasRequiredRole) {
-        await interaction.editReply(
-          "You do not have the required role to open the door."
-        );
-        return;
-      }
-
-      // Roles are okay, attempt to open the door
-      console.log(
-        `Door opening command triggered by ${interaction.user.tag} in channel #${interaction.channel.name}`
+      // Return up to 25 matching results
+      await interaction.respond(
+        filtered.slice(0, 25).map((book) => ({ name: book, value: book }))
       );
-      const response = await fetch("http://100.110.75.56:5458/door", {
-        method: "GET",
-      });
-
-      if (response.ok) {
-        console.log("Door opening request sent successfully.");
-        await interaction.editReply(
-          "Door opening request sent successfully. ✅"
-        );
-      } else {
-        console.error(
-          `Door opening request failed with status: ${response.status}`
-        );
-        await interaction.editReply(
-          `Failed to send door opening request (status: ${response.status}). Please try again or contact an admin.`
-        );
-      }
-    } catch (error) {
-      console.error("Error handling opendoor command:", error);
-      await interaction
-        .editReply("An error occurred while processing the command.")
-        .catch(console.error); // Catch potential error during reply
     }
+    return;
+  }
+
+  if (interaction.isChatInputCommand()) {
+    if (interaction.commandName === "ping") {
+      try {
+        await interaction.deferReply();
+        await interaction.editReply("Pong!");
+      } catch (error) {
+        console.error("Error responding to ping command:", error);
+      }
+    } else if (interaction.commandName === "book") {
+      try {
+        await interaction.deferReply();
+        const bookTitle = interaction.options.getString("title");
+        const numberOfDays = interaction.options.getInteger("days");
+        const attachment = interaction.options.getAttachment("image");
+
+        if (!bookTitle || !numberOfDays) {
+          await interaction.editReply(
+            "Please provide both a book title and number of days!"
+          );
+          return;
+        }
+
+        if (!attachment) {
+          await interaction.editReply("Please provide a book image!");
+          return;
+        }
+
+        // Calculate due date
+        const borrowDate = new Date();
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + numberOfDays);
+
+        // Format dates as YYYY-MM-DD
+        const borrowDateStr = borrowDate.toISOString().split("T")[0];
+        const dueDateStr = dueDate.toISOString().split("T")[0];
+
+        // Record the borrowing
+        addBorrowing({
+          userId: interaction.user.id,
+          username: interaction.user.username,
+          bookTitle,
+          borrowDate: borrowDateStr,
+          dueDate: dueDateStr,
+          channelId: interaction.channelId,
+          guildId: interaction.guildId || "",
+          imageUrl: attachment.url,
+        });
+
+        await interaction.editReply({
+          content: `📚 Your borrowing of "${bookTitle}" has been recorded. You will be notified on ${dueDateStr} when it is due to be returned.`,
+          files: [attachment],
+        });
+      } catch (error) {
+        console.error("Error responding to book command:", error);
+        if (interaction.replied || interaction.deferred) {
+          await interaction
+            .followUp({
+              content: "An error occurred while processing the book command.",
+              ephemeral: true,
+            })
+            .catch(console.error);
+        } else {
+          await interaction
+            .reply({
+              content: "An error occurred while processing the book command.",
+              ephemeral: true,
+            })
+            .catch(console.error);
+        }
+      }
+    } else if (interaction.commandName === "opendoor") {
+      await handleOpenDoorInteraction(interaction);
+    }
+    return;
+  }
+
+  if (interaction.isButton()) {
+    if (interaction.customId === "opendoor_button") {
+      await handleOpenDoorInteraction(interaction);
+    }
+    return;
   }
 });
 
 // We'll keep the message commands for backward compatibility
 client.on(Events.MessageCreate, async (message) => {
-  // Ignore messages from bots
   if (message.author.bot) return;
 
-  // REMOVED: Automatic door opening logic based on any message
-  // The logic is now handled by the /opendoor slash command
-
-  // Simple ping command
   if (message.content === "!ping") {
     await message.reply("Pong!");
   }
 
-  // Book borrowing command
   if (message.content.startsWith("!book ")) {
-    // Extract book title (in quotes) and number of days
+    if (
+      !message.channel ||
+      !("name" in message.channel) ||
+      message.channel.name !== "library"
+    ) {
+      await message.reply(
+        "The `!book` command can only be used in the #library channel."
+      );
+      return;
+    }
+
     const bookCommandRegex = /!book\s+"([^"]+)"\s+(\d+)/;
     const match = message.content.match(bookCommandRegex);
 
@@ -364,23 +426,19 @@ client.on(Events.MessageCreate, async (message) => {
       const bookTitle = match[1];
       const numberOfDays = parseInt(match[2]);
 
-      // Check for image attachment
       const attachment = message.attachments.first();
       if (!attachment) {
         await message.reply("Please attach an image of the book!");
         return;
       }
 
-      // Calculate due date
       const borrowDate = new Date();
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + numberOfDays);
 
-      // Format dates as YYYY-MM-DD
       const borrowDateStr = borrowDate.toISOString().split("T")[0];
       const dueDateStr = dueDate.toISOString().split("T")[0];
 
-      // Record the borrowing
       addBorrowing({
         userId: message.author.id,
         username: message.author.username,
@@ -404,7 +462,6 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 
-// Get token from environment variable
 const token = process.env.CLIENT_TOKEN;
 
 if (!token) {
@@ -412,7 +469,6 @@ if (!token) {
   process.exit(1);
 }
 
-// Login to Discord with the token
 client.login(token).catch((error) => {
   console.error("Error logging in to Discord:", error);
 });
