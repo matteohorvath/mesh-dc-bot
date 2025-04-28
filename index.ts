@@ -8,11 +8,13 @@ import {
   Collection,
   User,
   TextChannel,
+  GuildMember,
 } from "discord.js";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { scheduleJob } from "node-schedule";
+import fetch from "node-fetch";
 
 // Load environment variables
 dotenv.config();
@@ -23,6 +25,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
@@ -169,6 +172,10 @@ client.once(Events.ClientReady, async (readyClient) => {
             },
           ],
         },
+        {
+          name: "opendoor",
+          description: "Opens the door if you have the required role.",
+        },
       ],
     });
 
@@ -273,12 +280,74 @@ client.on(Events.InteractionCreate, async (interaction) => {
       console.error("Error responding to book command:", error);
     }
   }
+
+  // Handle the new /opendoor command
+  if (interaction.commandName === "opendoor") {
+    try {
+      await interaction.deferReply({ ephemeral: true }); // Ephemeral reply
+
+      // Ensure the command is used in a guild and the channel is correct
+      if (
+        !interaction.inGuild() ||
+        !interaction.channel ||
+        interaction.channel.name !== "door"
+      ) {
+        await interaction.editReply(
+          "This command can only be used in the #door channel."
+        );
+        return;
+      }
+
+      // Check user roles (interaction.member should be a GuildMember here)
+      const member = interaction.member as GuildMember;
+      const hasRequiredRole = member.roles.cache.some(
+        (role) => role.name === "BL001" || role.name === "Member"
+      );
+
+      if (!hasRequiredRole) {
+        await interaction.editReply(
+          "You do not have the required role to open the door."
+        );
+        return;
+      }
+
+      // Roles are okay, attempt to open the door
+      console.log(
+        `Door opening command triggered by ${interaction.user.tag} in channel #${interaction.channel.name}`
+      );
+      const response = await fetch("http://100.110.75.56:5458/door", {
+        method: "GET",
+      });
+
+      if (response.ok) {
+        console.log("Door opening request sent successfully.");
+        await interaction.editReply(
+          "Door opening request sent successfully. ✅"
+        );
+      } else {
+        console.error(
+          `Door opening request failed with status: ${response.status}`
+        );
+        await interaction.editReply(
+          `Failed to send door opening request (status: ${response.status}). Please try again or contact an admin.`
+        );
+      }
+    } catch (error) {
+      console.error("Error handling opendoor command:", error);
+      await interaction
+        .editReply("An error occurred while processing the command.")
+        .catch(console.error); // Catch potential error during reply
+    }
+  }
 });
 
 // We'll keep the message commands for backward compatibility
 client.on(Events.MessageCreate, async (message) => {
   // Ignore messages from bots
   if (message.author.bot) return;
+
+  // REMOVED: Automatic door opening logic based on any message
+  // The logic is now handled by the /opendoor slash command
 
   // Simple ping command
   if (message.content === "!ping") {
