@@ -284,7 +284,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // Handle the new /opendoor command
   if (interaction.commandName === "opendoor") {
     try {
-      await interaction.deferReply({ ephemeral: true }); // Ephemeral reply
+      await interaction.deferReply({ ephemeral: false }); // Ephemeral reply
 
       // Ensure the command is used in a guild and the channel is correct
       if (
