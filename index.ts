@@ -182,6 +182,10 @@ client.once(Events.ClientReady, async (readyClient) => {
           name: "opendoor",
           description: "Opens the door if you have the required role.",
         },
+        {
+          name: "lockdoor",
+          description: "Locks the door if you have the required role.",
+        },
       ],
     });
 
@@ -199,6 +203,24 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error("Error refreshing application commands:", error);
   }
 });
+
+// Function to create the action row with both door buttons
+function createDoorActionRow(): ActionRowBuilder<ButtonBuilder> {
+  const openDoorButton = new ButtonBuilder()
+    .setCustomId("opendoor_button")
+    .setLabel("Open Door")
+    .setStyle(ButtonStyle.Primary);
+
+  const lockDoorButton = new ButtonBuilder()
+    .setCustomId("lockdoor_button")
+    .setLabel("Lock Door")
+    .setStyle(ButtonStyle.Secondary); // Use a different style for distinction
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    openDoorButton,
+    lockDoorButton
+  );
+}
 
 // Refactored function to handle the door opening logic
 async function handleOpenDoorInteraction(
@@ -248,16 +270,8 @@ async function handleOpenDoorInteraction(
 
     if (response.ok) {
       console.log("Door opening request sent successfully.");
-      // Create the button
-      const openDoorButton = new ButtonBuilder()
-        .setCustomId("opendoor_button") // Keep the same ID to be caught by the interaction handler
-        .setLabel("Open Door") // Change label slightly for clarity
-        .setStyle(ButtonStyle.Primary);
-
-      // Create an action row to hold the button
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        openDoorButton
-      );
+      // Create the action row with both buttons
+      const row = createDoorActionRow();
 
       await interaction.editReply({
         content: "Door opening request sent successfully. ✅",
@@ -273,21 +287,99 @@ async function handleOpenDoorInteraction(
     }
   } catch (error) {
     console.error("Error handling opendoor interaction:", error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction
-        .followUp({
-          content: "An error occurred while processing the command.",
-          ephemeral: true,
-        })
-        .catch(console.error);
-    } else {
-      await interaction
-        .reply({
-          content: "An error occurred while processing the command.",
-          ephemeral: true,
-        })
-        .catch(console.error);
+    // Always try followup after attempting deferReply, catching potential errors here
+    await interaction
+      .followUp({
+        content: "An error occurred while processing the open door command.",
+        ephemeral: true,
+      })
+      .catch((followUpError) => {
+        console.error(
+          "Failed to send error followup for open door:",
+          followUpError
+        );
+      });
+  }
+}
+
+// New function to handle the door locking logic
+async function handleLockDoorInteraction(
+  interaction: ChatInputCommandInteraction | ButtonInteraction
+) {
+  try {
+    // Use deferReply for buttons as well
+    await interaction.deferReply({ ephemeral: false });
+
+    // Ensure the command is used in a guild and the channel is correct
+    if (
+      !interaction.inGuild() ||
+      !interaction.channel ||
+      !("name" in interaction.channel) ||
+      interaction.channel.name !== "door"
+    ) {
+      await interaction.editReply(
+        "This action can only be performed in the #door channel."
+      );
+      return;
     }
+
+    // Check user roles
+    const member = interaction.member as GuildMember;
+    if (!member) {
+      await interaction.editReply("Could not determine your roles.");
+      return;
+    }
+    const hasRequiredRole = member.roles.cache.some(
+      (role) => role.name === "BL001" || role.name === "Member"
+    );
+
+    if (!hasRequiredRole) {
+      await interaction.editReply(
+        "You do not have the required role to lock the door."
+      );
+      return;
+    }
+
+    // Roles are okay, attempt to lock the door
+    console.log(
+      `Door locking initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
+    );
+    const response = await fetch("http://100.110.75.56:5458/lock", {
+      // Changed endpoint to /lock
+      method: "GET",
+    });
+
+    if (response.ok) {
+      console.log("Door locking request sent successfully.");
+      // Create the action row with both buttons
+      const row = createDoorActionRow();
+
+      await interaction.editReply({
+        content: "Door locking request sent successfully. ✅", // Changed message
+        components: [row], // Add the button row here
+      });
+    } else {
+      console.error(
+        `Door locking request failed with status: ${response.status}`
+      );
+      await interaction.editReply(
+        `Failed to send door locking request (status: ${response.status}). Please try again or contact an admin.` // Changed message
+      );
+    }
+  } catch (error) {
+    console.error("Error handling lockdoor interaction:", error); // Changed message
+    // Always try followup after attempting deferReply, catching potential errors here
+    await interaction
+      .followUp({
+        content: "An error occurred while processing the lock door command.", // Changed message
+        ephemeral: true,
+      })
+      .catch((followUpError) => {
+        console.error(
+          "Failed to send error followup for lock door:",
+          followUpError
+        ); // Changed message
+      });
   }
 }
 
@@ -387,6 +479,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     } else if (interaction.commandName === "opendoor") {
       await handleOpenDoorInteraction(interaction);
+    } else if (interaction.commandName === "lockdoor") {
+      await handleLockDoorInteraction(interaction);
     }
     return;
   }
@@ -394,6 +488,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isButton()) {
     if (interaction.customId === "opendoor_button") {
       await handleOpenDoorInteraction(interaction);
+    } else if (interaction.customId === "lockdoor_button") {
+      await handleLockDoorInteraction(interaction);
     }
     return;
   }
