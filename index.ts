@@ -250,7 +250,10 @@ async function handleOpenDoorInteraction(
       return;
     }
     const hasRequiredRole = member.roles.cache.some(
-      (role) => role.name === "BL001" || role.name === "Member"
+      (role) =>
+        role.name === "BL001" ||
+        role.name === "Member" ||
+        role.name === "Mentor"
     );
 
     if (!hasRequiredRole) {
@@ -274,7 +277,10 @@ async function handleOpenDoorInteraction(
       const row = createDoorActionRow();
 
       await interaction.editReply({
-        content: "Door opening request sent successfully. ✅",
+        content:
+          "Door opening request sent successfully by " +
+          interaction.user.username +
+          ". ✅",
         components: [row], // Add the button row here
       });
     } else {
@@ -330,7 +336,10 @@ async function handleLockDoorInteraction(
       return;
     }
     const hasRequiredRole = member.roles.cache.some(
-      (role) => role.name === "BL001" || role.name === "Member"
+      (role) =>
+        role.name === "BL001" ||
+        role.name === "Member" ||
+        role.name === "Mentor"
     );
 
     if (!hasRequiredRole) {
@@ -355,7 +364,10 @@ async function handleLockDoorInteraction(
       const row = createDoorActionRow();
 
       await interaction.editReply({
-        content: "Door locking request sent successfully. ✅", // Changed message
+        content:
+          "Door locking request sent successfully by " +
+          interaction.user.username +
+          ". ✅", // Changed message
         components: [row], // Add the button row here
       });
     } else {
