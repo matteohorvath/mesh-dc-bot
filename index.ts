@@ -253,7 +253,8 @@ async function handleOpenDoorInteraction(
       (role) =>
         role.name === "BL001" ||
         role.name === "Member" ||
-        role.name === "Mentor"
+        role.name === "Mentor" ||
+        role.name === "door"
     );
 
     if (!hasRequiredRole) {
@@ -339,7 +340,8 @@ async function handleLockDoorInteraction(
       (role) =>
         role.name === "BL001" ||
         role.name === "Member" ||
-        role.name === "Mentor"
+        role.name === "Mentor" ||
+        role.name === "door"
     );
 
     if (!hasRequiredRole) {
