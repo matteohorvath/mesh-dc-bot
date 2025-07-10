@@ -223,8 +223,7 @@ function createDoorActionRow(): ActionRowBuilder<ButtonBuilder> {
 
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     openDoorButton,
-    lockDoorButton,
-    everyBodyLeftAndLockDoorButton
+    lockDoorButton
   );
 }
 
@@ -524,8 +523,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleOpenDoorInteraction(interaction);
     } else if (interaction.customId === "lockdoor_button") {
       await handleLockDoorInteraction(interaction);
-    } else if (interaction.customId === "everyoneLeft_button") {
-      await handleEveryoneLeftInteraction(interaction);
     }
     return;
   }
