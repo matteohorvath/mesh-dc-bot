@@ -284,6 +284,13 @@ async function handleOpenDoorInteraction(
           ". ✅",
         components: [row], // Add the button row here
       });
+      //change the name of the channel "officeclosed" to "officeopen"
+      const officeClosedChannel = await interaction.guild?.channels.cache.find(
+        (channel) => channel.name === "🔴│office-is-closed"
+      );
+      if (officeClosedChannel) {
+        await officeClosedChannel.setName("🟢│office-is-open");
+      }
     } else {
       console.error(
         `Door opening request failed with status: ${response.status}`
@@ -374,10 +381,10 @@ async function handleLockDoorInteraction(
       });
       //change the name of the channel "officeopen" to "officeclosed"
       const officeOpenChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name === "officeopen"
+        (channel) => channel.name === "🟢│office-is-open"
       );
       if (officeOpenChannel) {
-        await officeOpenChannel.setName("officeclosed");
+        await officeOpenChannel.setName("🔴│office-is-closed");
       }
     } else {
       console.error(
