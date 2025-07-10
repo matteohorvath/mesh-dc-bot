@@ -235,10 +235,10 @@ async function handleOpenDoorInteraction(
       !interaction.inGuild() ||
       !interaction.channel ||
       !("name" in interaction.channel) ||
-      interaction.channel.name !== "🚪│door"
+      !interaction.channel.name.includes("office-door")
     ) {
       await interaction.editReply(
-        "This action can only be performed in the #door channel."
+        "This action can only be performed in the #office-door channel."
       );
       return;
     }
@@ -329,10 +329,10 @@ async function handleLockDoorInteraction(
       !interaction.inGuild() ||
       !interaction.channel ||
       !("name" in interaction.channel) ||
-      interaction.channel.name !== "🚪│door"
+      !interaction.channel.name.includes("office-door")
     ) {
       await interaction.editReply(
-        "This action can only be performed in the #door channel."
+        "This action can only be performed in the #office-door channel."
       );
       return;
     }
