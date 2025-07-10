@@ -291,7 +291,7 @@ async function handleOpenDoorInteraction(
       });
       //change the name of the channel "officeclosed" to "officeopen"
       const officeClosedChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name.includes("office-is-closed")
+        (channel) => channel.name.endsWith("office-is-closed")
       );
       if (officeClosedChannel) {
         await officeClosedChannel.setName("🟢│office-is-open");
@@ -386,7 +386,7 @@ async function handleLockDoorInteraction(
       });
       //change the name of the channel "officeopen" to "officeclosed"
       const officeOpenChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name.contains("office-is-open")
+        (channel) => channel.name.endsWith("office-is-open")
       );
       if (officeOpenChannel) {
         await officeOpenChannel.setName("🔴│office-is-closed");
