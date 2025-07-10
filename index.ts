@@ -235,7 +235,7 @@ async function handleOpenDoorInteraction(
       !interaction.inGuild() ||
       !interaction.channel ||
       !("name" in interaction.channel) ||
-      interaction.channel.name !== "door"
+      interaction.channel.name !== "🚪│door"
     ) {
       await interaction.editReply(
         "This action can only be performed in the #door channel."
@@ -252,7 +252,7 @@ async function handleOpenDoorInteraction(
     const hasRequiredRole = member.roles.cache.some(
       (role) =>
         role.name === "BL001" ||
-        role.name === "Member" ||
+        role.name === "Builder" ||
         role.name === "Mentor" ||
         role.name === "door"
     );
@@ -325,7 +325,7 @@ async function handleLockDoorInteraction(
       interaction.channel.name !== "🚪│door"
     ) {
       await interaction.editReply(
-        "This action can only be performed in the #door channel. lol"
+        "This action can only be performed in the #door channel."
       );
       return;
     }
@@ -339,7 +339,7 @@ async function handleLockDoorInteraction(
     const hasRequiredRole = member.roles.cache.some(
       (role) =>
         role.name === "BL001" ||
-        role.name === "Member" ||
+        role.name === "Builder" ||
         role.name === "Mentor" ||
         role.name === "door"
     );
