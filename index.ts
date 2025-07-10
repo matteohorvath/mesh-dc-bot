@@ -372,6 +372,13 @@ async function handleLockDoorInteraction(
           ". ✅", // Changed message
         components: [row], // Add the button row here
       });
+      //change the name of the channel "officeopen" to "officeclosed"
+      const officeOpenChannel = await interaction.guild?.channels.cache.find(
+        (channel) => channel.name === "officeopen"
+      );
+      if (officeOpenChannel) {
+        await officeOpenChannel.setName("officeclosed");
+      }
     } else {
       console.error(
         `Door locking request failed with status: ${response.status}`
