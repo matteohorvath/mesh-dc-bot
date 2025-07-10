@@ -296,7 +296,11 @@ async function handleOpenDoorInteraction(
       console.log("openIndicatorChannel", openIndicatorChannel?.name);
       if (openIndicatorChannel) {
         console.log("Changing name to officeopen");
-        await openIndicatorChannel.setName("officeopen");
+        try {
+          await openIndicatorChannel.setName("officeopen");
+        } catch (error) {
+          console.error("Error changing name to officeopen:", error);
+        }
         console.log("Changed name to officeopen");
       }
     } else {
@@ -394,7 +398,11 @@ async function handleLockDoorInteraction(
       console.log(openIndicatorChannel?.name);
       if (openIndicatorChannel) {
         console.log("Changing name to officeclosed");
-        await openIndicatorChannel.setName("officeclosed");
+        try {
+          await openIndicatorChannel.setName("officeclosed");
+        } catch (error) {
+          console.error("Error changing name to officeclosed:", error);
+        }
         console.log("Changed name to officeclosed");
       }
     } else {
