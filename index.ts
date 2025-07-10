@@ -216,9 +216,15 @@ function createDoorActionRow(): ActionRowBuilder<ButtonBuilder> {
     .setLabel("Lock Door")
     .setStyle(ButtonStyle.Secondary); // Use a different style for distinction
 
+  const everyBodyLeftAndLockDoorButton = new ButtonBuilder()
+    .setCustomId("everyoneLeft_button")
+    .setLabel("Every Body Left and Lock Door")
+    .setStyle(ButtonStyle.Danger);
+
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     openDoorButton,
-    lockDoorButton
+    lockDoorButton,
+    everyBodyLeftAndLockDoorButton
   );
 }
 
@@ -518,6 +524,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleOpenDoorInteraction(interaction);
     } else if (interaction.customId === "lockdoor_button") {
       await handleLockDoorInteraction(interaction);
+    } else if (interaction.customId === "everyoneLeft_button") {
+      await handleEveryoneLeftInteraction(interaction);
     }
     return;
   }
@@ -596,3 +604,18 @@ if (!token) {
 client.login(token).catch((error) => {
   console.error("Error logging in to Discord:", error);
 });
+
+async function handleEveryoneLeftAndLockDoorInteraction(interaction: any) {
+  try {
+    await handleLockDoorInteraction(interaction);
+    //change channel name to "office-is-closed"
+    const officeOpenChannel = await interaction.guild?.channels.cache.find(
+      (channel) => channel.name.includes("office-is-open")
+    );
+    if (officeOpenChannel) {
+      await officeOpenChannel.setName("🔴│office-is-closed");
+    }
+  } catch (error) {
+    console.error("Error handling everyone left interaction:", error);
+  }
+}
