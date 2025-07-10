@@ -299,7 +299,8 @@ async function handleOpenDoorInteraction(
         console.log("Changing name to officeopen");
         try {
           if (openIndicatorChannel.name === "🔴│office-is-closed") {
-          await openIndicatorChannel.setName("🟢│office-is-open");
+            await openIndicatorChannel.setName("🟢│office-is-open");
+          }
         } catch (error) {
           console.error("Error changing name to officeopen:", error);
         }
