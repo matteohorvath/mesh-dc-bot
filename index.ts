@@ -218,12 +218,13 @@ function createDoorActionRow(): ActionRowBuilder<ButtonBuilder> {
 
   const everyBodyLeftAndLockDoorButton = new ButtonBuilder()
     .setCustomId("everyoneLeft_button")
-    .setLabel("Every Body Left and Lock Door")
-    .setStyle(ButtonStyle.Danger);
+    .setLabel("Everybody Left and Lock Door")
+    .setStyle(ButtonStyle.Secondary);
 
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     openDoorButton,
-    lockDoorButton
+    lockDoorButton,
+    everyBodyLeftAndLockDoorButton
   );
 }
 
@@ -330,7 +331,8 @@ async function handleOpenDoorInteraction(
 
 // New function to handle the door locking logic
 async function handleLockDoorInteraction(
-  interaction: ChatInputCommandInteraction | ButtonInteraction
+  interaction: ChatInputCommandInteraction | ButtonInteraction,
+  everybodyLeft: boolean = false
 ) {
   try {
     // Use deferReply for buttons as well
@@ -399,7 +401,9 @@ async function handleLockDoorInteraction(
       if (openIndicatorChannel) {
         console.log("Changing name to officeclosed");
         try {
-          await openIndicatorChannel.setName("🔴│office-is-closed");
+          if (everybodyLeft) {
+            await openIndicatorChannel.setName("🔴│office-is-closed");
+          }
         } catch (error) {
           console.error("Error changing name to officeclosed:", error);
         }
@@ -537,6 +541,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleOpenDoorInteraction(interaction);
     } else if (interaction.customId === "lockdoor_button") {
       await handleLockDoorInteraction(interaction);
+    } else if (interaction.customId === "everyoneLeft_button") {
+      await handleLockDoorInteraction(interaction, true);
     }
     return;
   }
