@@ -289,12 +289,12 @@ async function handleOpenDoorInteraction(
           ". ✅",
         components: [row], // Add the button row here
       });
-      //change the name of the channel "officeclosed" to "officeopen"
-      const officeClosedChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name.endsWith("office-is-closed")
+      //change the name of the channel 1392847857937289388 to "officeopen"
+      const openIndicatorChannel = await interaction.guild?.channels.resolve(
+        "1392847857937289388"
       );
-      if (officeClosedChannel) {
-        await officeClosedChannel.setName("🟢│office-is-open");
+      if (openIndicatorChannel) {
+        await openIndicatorChannel.setName("officeopen");
       }
     } else {
       console.error(
@@ -384,12 +384,12 @@ async function handleLockDoorInteraction(
           ". ✅", // Changed message
         components: [row], // Add the button row here
       });
-      //change the name of the channel "officeopen" to "officeclosed"
-      const officeOpenChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name.endsWith("office-is-open")
+      //change the name of the channel 1392847857937289388 to "officeclosed"
+      const openIndicatorChannel = await interaction.guild?.channels.resolve(
+        "1392847857937289388"
       );
-      if (officeOpenChannel) {
-        await officeOpenChannel.setName("🔴│office-is-closed");
+      if (openIndicatorChannel) {
+        await openIndicatorChannel.setName("officeclosed");
       }
     } else {
       console.error(
@@ -601,18 +601,3 @@ if (!token) {
 client.login(token).catch((error) => {
   console.error("Error logging in to Discord:", error);
 });
-
-async function handleEveryoneLeftAndLockDoorInteraction(interaction: any) {
-  try {
-    await handleLockDoorInteraction(interaction);
-    //change channel name to "office-is-closed"
-    const officeOpenChannel = await interaction.guild?.channels.cache.find(
-      (channel) => channel.name.includes("office-is-open")
-    );
-    if (officeOpenChannel) {
-      await officeOpenChannel.setName("🔴│office-is-closed");
-    }
-  } catch (error) {
-    console.error("Error handling everyone left interaction:", error);
-  }
-}
