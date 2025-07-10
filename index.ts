@@ -325,7 +325,7 @@ async function handleLockDoorInteraction(
       interaction.channel.name !== "🚪│door"
     ) {
       await interaction.editReply(
-        "This action can only be performed in the #door channel."
+        "This action can only be performed in the #door channel. lol"
       );
       return;
     }
