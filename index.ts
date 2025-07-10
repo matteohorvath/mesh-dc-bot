@@ -322,7 +322,7 @@ async function handleLockDoorInteraction(
       !interaction.inGuild() ||
       !interaction.channel ||
       !("name" in interaction.channel) ||
-      interaction.channel.name !== "door"
+      interaction.channel.name !== "🚪│door"
     ) {
       await interaction.editReply(
         "This action can only be performed in the #door channel."
