@@ -293,8 +293,11 @@ async function handleOpenDoorInteraction(
       const openIndicatorChannel = await interaction.guild?.channels.resolve(
         "1392847857937289388"
       );
+      console.log("openIndicatorChannel", openIndicatorChannel?.name);
       if (openIndicatorChannel) {
+        console.log("Changing name to officeopen");
         await openIndicatorChannel.setName("officeopen");
+        console.log("Changed name to officeopen");
       }
     } else {
       console.error(
@@ -388,8 +391,11 @@ async function handleLockDoorInteraction(
       const openIndicatorChannel = await interaction.guild?.channels.resolve(
         "1392847857937289388"
       );
+      console.log(openIndicatorChannel?.name);
       if (openIndicatorChannel) {
+        console.log("Changing name to officeclosed");
         await openIndicatorChannel.setName("officeclosed");
+        console.log("Changed name to officeclosed");
       }
     } else {
       console.error(
