@@ -386,7 +386,7 @@ async function handleLockDoorInteraction(
       });
       //change the name of the channel "officeopen" to "officeclosed"
       const officeOpenChannel = await interaction.guild?.channels.cache.find(
-        (channel) => channel.name.includes("office-is-open")
+        (channel) => channel.name.contains("office-is-open")
       );
       if (officeOpenChannel) {
         await officeOpenChannel.setName("🔴│office-is-closed");
