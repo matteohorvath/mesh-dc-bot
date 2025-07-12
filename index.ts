@@ -195,42 +195,6 @@ client.once(Events.ClientReady, async (readyClient) => {
       checkDueBooks();
     });
 
-    // Add a scheduled job to ping the door IP every 10 minutes
-    scheduleJob("*/10 * * * *", async () => {
-      console.log("Pinging 100.94.104.31 for bot health check");
-      try {
-        const response = await fetch("http://100.94.104.31:5458/doo", {
-          method: "GET",
-        });
-        if (!response.ok) {
-          throw new Error(`Ping failed with status ${response.status}`);
-        }
-        // Optionally, restore the channel name if it was set to 'bot is not working' (see TODO)
-      } catch (error) {
-        console.error("Ping to 100.94.104.31 failed:", error);
-        // Try to set the channel name to 'bot is not working'
-        try {
-          const guild = client.guilds.cache.first();
-          if (guild) {
-            const openIndicatorChannel = guild.channels.cache.get(
-              "1392847857937289388"
-            );
-            if (openIndicatorChannel && openIndicatorChannel.isTextBased()) {
-              if (openIndicatorChannel.name !== "bot is not working") {
-                await openIndicatorChannel.setName("door error, call an admin");
-                console.log("Set channel name to 'bot is not working'");
-              }
-            }
-          }
-        } catch (err) {
-          console.error(
-            "Failed to set channel name to 'bot is not working':",
-            err
-          );
-        }
-      }
-    });
-
     // Also check on startup
     await checkDueBooks();
 
@@ -310,7 +274,7 @@ async function handleOpenDoorInteraction(
     console.log(
       `Door opening initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
     );
-    const response = await fetch("http://100.94.104.31:5458/door", {
+    const response = await fetch("http://100.110.75.56:5458/open", {
       method: "GET",
     });
 
@@ -414,7 +378,7 @@ async function handleLockDoorInteraction(
     console.log(
       `Door locking initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
     );
-    const response = await fetch("http://100.94.104.31:5458/lock", {
+    const response = await fetch("http://100.110.75.56:5458/lock", {
       // Changed endpoint to /lock
       method: "GET",
     });
