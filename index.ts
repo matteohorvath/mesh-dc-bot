@@ -274,7 +274,7 @@ async function handleOpenDoorInteraction(
     console.log(
       `Door opening initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
     );
-    const response = await fetch("http://100.110.75.56:5458/open", {
+    const response = await fetch("http://100.110.75.56:5458/door", {
       method: "GET",
     });
 
