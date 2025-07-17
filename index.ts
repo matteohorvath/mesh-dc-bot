@@ -25,6 +25,8 @@ import fetch from "node-fetch";
 // Load environment variables
 dotenv.config();
 
+const DOOR_IP = "100.94.104.31";
+
 // Create a new client instance
 const client = new Client({
   intents: [
@@ -274,7 +276,7 @@ async function handleOpenDoorInteraction(
     console.log(
       `Door opening initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
     );
-    const response = await fetch("http://100.110.75.56:5458/door", {
+    const response = await fetch(`http://${DOOR_IP}:5458/door`, {
       method: "GET",
     });
 
@@ -378,7 +380,7 @@ async function handleLockDoorInteraction(
     console.log(
       `Door locking initiated by ${interaction.user.tag} in channel #${interaction.channel.name}`
     );
-    const response = await fetch("http://100.110.75.56:5458/lock", {
+    const response = await fetch(`http://${DOOR_IP}:5458/lock`, {
       // Changed endpoint to /lock
       method: "GET",
     });
