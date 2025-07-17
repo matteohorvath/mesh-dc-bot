@@ -25,7 +25,7 @@ import fetch from "node-fetch";
 // Load environment variables
 dotenv.config();
 
-const DOOR_IP = "100.94.104.31";
+const DOOR_IP = "100.80.12.62";
 
 // Create a new client instance
 const client = new Client({
